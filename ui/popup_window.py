@@ -12,6 +12,8 @@ class PopupWindow(QWidget):
     def __init__(self, tray_icon: QSystemTrayIcon, parent=None):
         super().__init__(parent)
         self.tray_icon = tray_icon
+        self.chat_widget = None
+        self.send_callback = None
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -36,6 +38,7 @@ class PopupWindow(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         layout.addWidget(self.tabs)
 
         self.input_layout = QHBoxLayout()
@@ -53,8 +56,21 @@ class PopupWindow(QWidget):
 
         layout.addLayout(self.input_layout)
 
-        self.send_button.hide()
-        self.input_field.hide()
+    def set_chat_widget(self, widget):
+        self.chat_widget = widget
+
+    def set_send_callback(self, callback):
+        self.send_callback = callback
+
+    def _on_tab_changed(self, index):
+        tab_text = self.tabs.tabText(index)
+        if tab_text == "Chat":
+            self.input_field.show()
+            self.send_button.show()
+            self.input_field.setPlaceholderText("Type a message...")
+        else:
+            self.input_field.hide()
+            self.send_button.hide()
 
     def _apply_style(self):
         self.setStyleSheet(f"""
@@ -163,11 +179,7 @@ class PopupWindow(QWidget):
         text = self.input_field.text().strip()
         if text:
             self.input_field.clear()
-
-    def show_input(self):
-        self.input_field.show()
-        self.send_button.show()
-
-    def hide_input(self):
-        self.input_field.hide()
-        self.send_button.hide()
+            if self.chat_widget:
+                self.chat_widget.send_message(text)
+            if self.send_callback:
+                self.send_callback(text)
