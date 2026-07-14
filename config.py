@@ -21,7 +21,10 @@ POPUP_HEIGHT = 600
 
 TRAY_ICON_PATH = os.path.join(BASE_DIR, "assets", "icon.ico")
 
-HOTKEY = "alt+space"
+HOTKEY = "ctrl+shift+a"
+
+WAKE_WORD = "hello deskown"
+WAKE_WORD_THRESHOLD = 0.05
 
 STT_MODEL = "base"
 STT_DEVICE = "cpu"
