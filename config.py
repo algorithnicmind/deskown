@@ -21,7 +21,7 @@ POPUP_HEIGHT = 600
 
 TRAY_ICON_PATH = os.path.join(BASE_DIR, "assets", "icon.ico")
 
-HOTKEY = "ctrl+shift+d"
+HOTKEY = "alt+space"
 
 STT_MODEL = "base"
 STT_DEVICE = "cpu"
