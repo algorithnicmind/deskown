@@ -77,6 +77,7 @@ def main():
         popup.toggle_visibility()
 
     def on_quit():
+        voice_engine.stop_wake_word_listener()
         system_monitor.stop()
         tray.hide()
         app.quit()
@@ -127,6 +128,9 @@ def main():
         pass
 
     system_monitor.start()
+    
+    # We must define on_activate earlier or just use it here since it's in scope from above
+    voice_engine.start_wake_word_listener(on_activate)
 
     tray.show()
     tray.show_message(config.APP_NAME, f"Running. Press {config.HOTKEY} to toggle.")
