@@ -9,6 +9,13 @@ from PyQt6.QtCore import QTimer
 import config
 from ui.tray import SystemTray
 from ui.popup_window import PopupWindow
+from ui.chat_widget import ChatWidget
+from ui.voice_widget import VoiceWidget
+from ui.monitor_widget import MonitorWidget
+from core.ai_engine import AIEngine
+from core.voice_engine import VoiceEngine
+from core.task_runner import TaskRunner
+from core.system_monitor import SystemMonitor
 
 
 def main():
@@ -20,18 +27,80 @@ def main():
     if not os.path.exists(config.TRAY_ICON_PATH):
         os.makedirs(os.path.dirname(config.TRAY_ICON_PATH), exist_ok=True)
 
+    ai_engine = AIEngine()
+    voice_engine = VoiceEngine()
+    task_runner = TaskRunner()
+    system_monitor = SystemMonitor()
+
     tray = SystemTray()
     popup = PopupWindow(tray.tray)
+
+    chat_widget = ChatWidget(ai_engine)
+    voice_widget = VoiceWidget(voice_engine)
+    monitor_widget = MonitorWidget(system_monitor)
+
+    popup.add_tab(chat_widget, "Chat")
+    popup.add_tab(voice_widget, "Voice")
+    popup.add_tab(monitor_widget, "Monitor")
+    popup.set_chat_widget(chat_widget)
+
+    def on_send_message(text):
+        result = task_runner.execute(text, {
+            "ai_engine": ai_engine,
+            "voice_engine": voice_engine,
+            "task_runner": task_runner,
+            "config": config,
+        })
+        if result:
+            chat_widget._append_ai_message(result)
+
+    popup.set_send_callback(on_send_message)
+
+    def on_voice_speak(text):
+        result = task_runner.execute(text, {
+            "ai_engine": ai_engine,
+            "voice_engine": voice_engine,
+            "task_runner": task_runner,
+            "config": config,
+        })
+        if result:
+            chat_widget._append_ai_message(result)
+            voice_widget.speak_response(result)
+        else:
+            response = ai_engine.chat(text)
+            chat_widget._append_ai_message(response)
+            voice_widget.speak_response(response)
+
+    voice_widget.speak_requested.connect(on_voice_speak)
 
     def on_open():
         popup.toggle_visibility()
 
     def on_quit():
+        system_monitor.stop()
         tray.hide()
         app.quit()
 
+    def on_voice_toggled(enabled):
+        if enabled:
+            system_monitor.start()
+        else:
+            system_monitor.stop()
+
+    def on_autostart_toggled(enabled):
+        try:
+            import autostart
+            if enabled:
+                autostart.add_autostart()
+            else:
+                autostart.remove_autostart()
+        except ImportError:
+            pass
+
     tray.open_requested.connect(on_open)
     tray.quit_requested.connect(on_quit)
+    tray.voice_toggled.connect(on_voice_toggled)
+    tray.autostart_toggled.connect(on_autostart_toggled)
 
     try:
         from pynput import keyboard
@@ -56,6 +125,8 @@ def main():
         pass
     except Exception:
         pass
+
+    system_monitor.start()
 
     tray.show()
     tray.show_message(config.APP_NAME, f"Running. Press {config.HOTKEY} to toggle.")
