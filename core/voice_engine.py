@@ -115,3 +115,46 @@ class VoiceEngine:
 
     def list_devices(self) -> list:
         return sd.query_devices()
+
+    def start_wake_word_listener(self, callback):
+        self.wake_word_active = True
+        self.wake_word_thread = threading.Thread(target=self._wake_word_loop, args=(callback,), daemon=True)
+        self.wake_word_thread.start()
+
+    def stop_wake_word_listener(self):
+        self.wake_word_active = False
+        if hasattr(self, 'wake_word_thread') and self.wake_word_thread:
+            self.wake_word_thread.join(timeout=2)
+
+    def _wake_word_loop(self, callback):
+        self._init_stt()
+        chunk_duration = 2.0
+        chunk_samples = int(config.SAMPLE_RATE * chunk_duration)
+        
+        while self.wake_word_active:
+            if self.recording:
+                sd.sleep(500)
+                continue
+                
+            try:
+                audio_data = sd.rec(chunk_samples, samplerate=config.SAMPLE_RATE, channels=config.CHANNELS, dtype=config.AUDIO_DTYPE)
+                sd.wait()
+                
+                if not self.wake_word_active or self.recording:
+                    continue
+                    
+                audio_flat = audio_data.flatten()
+                rms = np.sqrt(np.mean(audio_flat**2))
+                
+                if rms > config.WAKE_WORD_THRESHOLD:
+                    text = self.transcribe(audio_flat).lower()
+                    
+                    import re
+                    text_clean = re.sub(r'[^\w\s]', '', text)
+                    
+                    if config.WAKE_WORD.lower() in text_clean:
+                        callback()
+                        sd.sleep(2000)
+            except Exception as e:
+                print(f"Wake word error: {e}")
+                sd.sleep(1000)
