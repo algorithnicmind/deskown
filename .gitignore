@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+*.whl
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# PyInstaller
+*.spec
+!build.spec
+
+# Ollama models
+*.gguf
+
+# Logs
+*.log
+
+# Audio temp files
+*.wav
+*.mp3
+
+# Distribution
+*.exe
+*.msi
