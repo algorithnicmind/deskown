@@ -45,29 +45,25 @@ def main():
     popup.set_chat_widget(chat_widget)
 
     def on_send_message(text):
-        result = task_runner.execute(text, {
+        response = ai_engine.chat(text, task_runner=task_runner, context={
             "ai_engine": ai_engine,
             "voice_engine": voice_engine,
             "task_runner": task_runner,
             "config": config,
         })
-        if result:
-            chat_widget._append_ai_message(result)
+        if response:
+            chat_widget._append_ai_message(response)
 
     popup.set_send_callback(on_send_message)
 
     def on_voice_speak(text):
-        result = task_runner.execute(text, {
+        response = ai_engine.chat(text, task_runner=task_runner, context={
             "ai_engine": ai_engine,
             "voice_engine": voice_engine,
             "task_runner": task_runner,
             "config": config,
         })
-        if result:
-            chat_widget._append_ai_message(result)
-            voice_widget.speak_response(result)
-        else:
-            response = ai_engine.chat(text)
+        if response:
             chat_widget._append_ai_message(response)
             voice_widget.speak_response(response)
 

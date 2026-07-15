@@ -1,10 +1,6 @@
 import importlib
 import os
 import pkgutil
-import re
-
-import config
-
 
 class TaskRunner:
     def __init__(self, plugin_dir: str = None):
@@ -32,26 +28,35 @@ class TaskRunner:
             except Exception as e:
                 print(f"Failed to load plugin {module_name}: {e}")
 
-    def match(self, command: str):
+    def get_ollama_tools(self) -> list[dict]:
+        """Returns the list of tool schemas for Ollama."""
+        tools = []
         for plugin in self.plugins:
-            if plugin.match(command):
-                return plugin
-        return None
+            if hasattr(plugin, "get_tools"):
+                tools.extend(plugin.get_tools())
+        return tools
 
-    def execute(self, command: str, context: dict = None) -> str:
+    def execute_tool(self, tool_name: str, arguments: dict, context: dict = None) -> str:
+        """Executes a specific tool by routing it to the appropriate plugin."""
         context = context or {}
-        plugin = self.match(command)
-        if plugin:
-            try:
-                return plugin.execute(command, context)
-            except Exception as e:
-                return f"Plugin error: {e}"
-        return ""
+        for plugin in self.plugins:
+            # Check if this plugin owns the tool
+            if hasattr(plugin, "get_tools"):
+                for tool in plugin.get_tools():
+                    if tool.get("function", {}).get("name") == tool_name:
+                        try:
+                            if hasattr(plugin, "execute_tool"):
+                                return str(plugin.execute_tool(tool_name, arguments, context))
+                            else:
+                                return f"Plugin {plugin.name} lacks execute_tool method."
+                        except Exception as e:
+                            return f"Error executing {tool_name}: {e}"
+        return f"Tool {tool_name} not found."
 
     def list_plugins(self) -> list[dict]:
         return [
             {"name": p.name, "description": p.description}
-            for p in self.plugins
+            for p in self.plugins if hasattr(p, "name")
         ]
 
     def reload_plugins(self):

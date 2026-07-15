@@ -1,15 +1,9 @@
-import re
 import subprocess
 
 
 class Plugin:
     name = "app_launcher"
     description = "Open applications by name"
-    patterns = [
-        r"open (.+)",
-        r"launch (.+)",
-        r"start (.+)",
-    ]
 
     APP_NAMES = {
         "chrome": "chrome.exe",
@@ -20,7 +14,6 @@ class Plugin:
         "notepad": "notepad.exe",
         "calculator": "calc.exe",
         "explorer": "explorer.exe",
-        "file explorer": "explorer.exe",
         "cmd": "cmd.exe",
         "terminal": "wt.exe",
         "powershell": "pwsh.exe",
@@ -33,23 +26,36 @@ class Plugin:
         "powerpoint": "powerpnt.exe",
     }
 
-    def match(self, command: str) -> bool:
-        for pattern in self.patterns:
-            if re.search(pattern, command, re.IGNORECASE):
-                return True
-        return False
+    def get_tools(self) -> list[dict]:
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "open_application",
+                    "description": "Opens a desktop application. Provide the common name of the application.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "app_name": {
+                                "type": "string",
+                                "description": "The name of the application to open, e.g. 'chrome', 'notepad', 'vscode'."
+                            }
+                        },
+                        "required": ["app_name"]
+                    }
+                }
+            }
+        ]
 
-    def execute(self, command: str, context: dict) -> str:
-        for pattern in self.patterns:
-            match = re.search(pattern, command, re.IGNORECASE)
-            if match:
-                app_name = match.group(1).strip().lower()
-                exe = self.APP_NAMES.get(app_name, f"{app_name}.exe")
-                try:
-                    subprocess.Popen([exe], creationflags=subprocess.DETACHED_PROCESS)
-                    return f"{app_name.title()} opened successfully"
-                except FileNotFoundError:
-                    return f"Could not find '{app_name}'. Try the full executable name."
-                except Exception as e:
-                    return f"Failed to open {app_name}: {e}"
-        return "Could not parse application name"
+    def execute_tool(self, tool_name: str, arguments: dict, context: dict) -> str:
+        if tool_name == "open_application":
+            app_name = arguments.get("app_name", "").strip().lower()
+            exe = self.APP_NAMES.get(app_name, f"{app_name}.exe")
+            try:
+                subprocess.Popen([exe], creationflags=subprocess.DETACHED_PROCESS)
+                return f"{app_name.title()} opened successfully."
+            except FileNotFoundError:
+                return f"Could not find '{app_name}'. Try providing the full executable name."
+            except Exception as e:
+                return f"Failed to open {app_name}: {e}"
+        return f"Unknown tool: {tool_name}"

@@ -1,17 +1,10 @@
 import os
-import re
 import fnmatch
 
 
 class Plugin:
     name = "file_search"
     description = "Find files on disk"
-    patterns = [
-        r"find (.+)",
-        r"search for (.+)",
-        r"locate (.+)",
-        r"find file (.+)",
-    ]
 
     SEARCH_DIRS = [
         os.path.expanduser("~\\Desktop"),
@@ -20,22 +13,35 @@ class Plugin:
         os.path.expanduser("~"),
     ]
 
-    def match(self, command: str) -> bool:
-        for pattern in self.patterns:
-            if re.search(pattern, command, re.IGNORECASE):
-                return True
-        return False
+    def get_tools(self) -> list[dict]:
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_files",
+                    "description": "Searches for files on the disk using a query or glob pattern.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The file name or glob pattern to search for (e.g. '*.txt' or 'report')."
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            }
+        ]
 
-    def execute(self, command: str, context: dict) -> str:
-        for pattern in self.patterns:
-            match = re.search(pattern, command, re.IGNORECASE)
-            if match:
-                query = match.group(1).strip()
-                results = self._search(query)
-                if results:
-                    return f"Found {len(results)} file(s):\n" + "\n".join(results[:10])
-                return f"No files found matching '{query}'"
-        return "Could not parse search query"
+    def execute_tool(self, tool_name: str, arguments: dict, context: dict) -> str:
+        if tool_name == "search_files":
+            query = arguments.get("query", "").strip()
+            results = self._search(query)
+            if results:
+                return f"Found {len(results)} file(s):\n" + "\n".join(results[:10])
+            return f"No files found matching '{query}'"
+        return f"Unknown tool: {tool_name}"
 
     def _search(self, query: str) -> list[str]:
         results = []

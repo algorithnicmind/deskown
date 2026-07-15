@@ -12,21 +12,60 @@ class AIEngine:
         ]
         self.client = ollama_client.Client(host=self.host)
 
-    def chat(self, message: str) -> str:
+    def chat(self, message: str, task_runner=None, context: dict = None) -> str:
         self.messages.append({"role": "user", "content": message})
         self._trim_history()
 
-        try:
-            response = self.client.chat(model=self.model, messages=self.messages)
-            content = response["message"]["content"]
-            self.messages.append({"role": "assistant", "content": content})
-            return content
-        except Exception as e:
-            error_msg = f"Error: {e}"
-            self.messages.append({"role": "assistant", "content": error_msg})
-            return error_msg
+        tools = []
+        if task_runner:
+            tools = task_runner.get_ollama_tools()
 
-    def chat_stream(self, message: str):
+        while True:
+            try:
+                response = self.client.chat(
+                    model=self.model,
+                    messages=self.messages,
+                    tools=tools if tools else None
+                )
+                
+                msg = response.get("message", {})
+                self.messages.append(msg)
+
+                tool_calls = msg.get("tool_calls")
+                if not tool_calls:
+                    return msg.get("content", "")
+
+                for tool_call in tool_calls:
+                    function_name = tool_call["function"]["name"]
+                    arguments = tool_call["function"]["arguments"]
+                    
+                    if task_runner:
+                        result = task_runner.execute_tool(function_name, arguments, context)
+                    else:
+                        result = "No task runner available."
+                    
+                    self.messages.append({
+                        "role": "tool",
+                        "content": str(result),
+                        "name": function_name
+                    })
+
+                self._trim_history()
+
+            except Exception as e:
+                error_msg = f"Error: {e}"
+                self.messages.append({"role": "assistant", "content": error_msg})
+                return error_msg
+
+    def chat_stream(self, message: str, task_runner=None, context: dict = None):
+        """Streaming doesn't work well with tool calls natively in a simple loop, 
+        so we fallback to synchronous chat if tools are used, or just do a standard stream."""
+        # For simplicity, if task_runner is provided, we just use synchronous chat and yield it
+        if task_runner:
+            result = self.chat(message, task_runner, context)
+            yield result
+            return
+
         self.messages.append({"role": "user", "content": message})
         self._trim_history()
 
@@ -38,9 +77,10 @@ class AIEngine:
                 stream=True,
             )
             for chunk in stream:
-                content = chunk["message"]["content"]
-                full_response += content
-                yield content
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    full_response += content
+                    yield content
 
             self.messages.append({"role": "assistant", "content": full_response})
         except Exception as e:
