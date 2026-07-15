@@ -5,7 +5,7 @@ APP_VERSION = "1.0.0"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-OLLAMA_MODEL = "qwen2.5:3b"
+OLLAMA_MODEL = "qwen2.5-coder:7b"
 OLLAMA_HOST = "http://localhost:11434"
 SYSTEM_PROMPT = (
     "You are DeskOwn, a helpful desktop AI assistant. "
