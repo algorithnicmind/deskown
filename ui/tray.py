@@ -1,6 +1,7 @@
+import os
 from PyQt6.QtCore import pyqtSignal, QObject
 from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
+from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication, QStyle
 
 import config
 
@@ -14,7 +15,14 @@ class SystemTray(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tray = QSystemTrayIcon(QApplication.instance())
-        self.tray.setIcon(QIcon(config.TRAY_ICON_PATH))
+        
+        if os.path.exists(config.TRAY_ICON_PATH):
+            self.tray.setIcon(QIcon(config.TRAY_ICON_PATH))
+        else:
+            style = QApplication.style()
+            icon = style.standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+            self.tray.setIcon(icon)
+            
         self.tray.setToolTip(f"{config.APP_NAME} - Desktop AI Assistant")
 
         self.menu = QMenu()
