@@ -16,12 +16,13 @@ def add_autostart():
         python_exe = sys.executable.replace("python.exe", "pythonw.exe")
         if not os.path.exists(python_exe):
             python_exe = sys.executable
+        main_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
         winreg.SetValueEx(
             key,
             config.AUTOSTART_KEY,
             0,
             winreg.REG_SZ,
-            f'"{python_exe}" "{os.path.abspath("main.py")}"',
+            f'"{python_exe}" "{main_script}"',
         )
         winreg.CloseKey(key)
         return True
