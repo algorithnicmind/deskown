@@ -4,7 +4,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, QThread, pyqtSignal
 
 import config
 from ui.tray import SystemTray
@@ -17,6 +17,20 @@ from core.voice_engine import VoiceEngine
 from core.task_runner import TaskRunner
 from core.system_monitor import SystemMonitor
 
+
+class AIWorker(QThread):
+    finished_response = pyqtSignal(str)
+
+    def __init__(self, engine, text, task_runner, context):
+        super().__init__()
+        self.engine = engine
+        self.text = text
+        self.task_runner = task_runner
+        self.context = context
+
+    def run(self):
+        response = self.engine.chat(self.text, task_runner=self.task_runner, context=self.context)
+        self.finished_response.emit(response)
 
 def main():
     app = QApplication(sys.argv)
@@ -44,28 +58,28 @@ def main():
     popup.add_tab(monitor_widget, "Monitor")
     popup.set_chat_widget(chat_widget)
 
-    def on_send_message(text):
-        response = ai_engine.chat(text, task_runner=task_runner, context={
-            "ai_engine": ai_engine,
-            "voice_engine": voice_engine,
-            "task_runner": task_runner,
-            "config": config,
-        })
-        if response:
-            chat_widget._append_ai_message(response)
-
-    popup.set_send_callback(on_send_message)
+    chat_widget.task_runner = task_runner
+    chat_widget.context = {
+        "ai_engine": ai_engine,
+        "voice_engine": voice_engine,
+        "task_runner": task_runner,
+        "config": config,
+    }
+    
+    # We remove the set_send_callback usage completely because chat_widget already 
+    # handles the chatting logic in its own thread via send_message.
 
     def on_voice_speak(text):
-        response = ai_engine.chat(text, task_runner=task_runner, context={
-            "ai_engine": ai_engine,
-            "voice_engine": voice_engine,
-            "task_runner": task_runner,
-            "config": config,
-        })
-        if response:
-            chat_widget._append_ai_message(response)
-            voice_widget.speak_response(response)
+        chat_widget._append_user_message(text)
+        worker = AIWorker(ai_engine, text, task_runner, chat_widget.context)
+        def on_done(response):
+            if response:
+                chat_widget._append_ai_message(response)
+                voice_widget.speak_response(response)
+        worker.finished_response.connect(on_done)
+        # Store worker in popup so it doesn't get GC'd
+        popup._voice_worker = worker
+        worker.start()
 
     voice_widget.speak_requested.connect(on_voice_speak)
 

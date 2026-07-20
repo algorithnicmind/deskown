@@ -15,14 +15,16 @@ class ChatStreamThread(QThread):
     finished = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, engine: AIEngine, message: str):
+    def __init__(self, engine: AIEngine, message: str, task_runner=None, context=None):
         super().__init__()
         self.engine = engine
         self.message = message
+        self.task_runner = task_runner
+        self.context = context
 
     def run(self):
         try:
-            for token in self.engine.chat_stream(self.message):
+            for token in self.engine.chat_stream(self.message, self.task_runner, self.context):
                 self.token_received.emit(token)
             self.finished.emit()
         except Exception as e:
@@ -34,6 +36,8 @@ class ChatWidget(QWidget):
         super().__init__(parent)
         self.engine = engine
         self.stream_thread = None
+        self.task_runner = None
+        self.context = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -87,7 +91,7 @@ class ChatWidget(QWidget):
         self._append_user_message(text)
         self._set_streaming(True)
 
-        self.stream_thread = ChatStreamThread(self.engine, text)
+        self.stream_thread = ChatStreamThread(self.engine, text, self.task_runner, self.context)
         self.stream_thread.token_received.connect(self._on_token)
         self.stream_thread.finished.connect(self._on_stream_finished)
         self.stream_thread.error.connect(self._on_error)
