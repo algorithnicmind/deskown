@@ -24,7 +24,7 @@ TRAY_ICON_PATH = os.path.join(BASE_DIR, "assets", "icon.ico")
 HOTKEY = "ctrl+shift+a"
 
 WAKE_WORD = "hello deskown"
-WAKE_WORD_THRESHOLD = 0.05
+WAKE_WORD_THRESHOLD = 0.1
 
 STT_MODEL = "base"
 STT_DEVICE = "cpu"

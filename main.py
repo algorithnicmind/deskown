@@ -78,11 +78,14 @@ def main():
         tray.hide()
         app.quit()
 
+    def on_activate():
+        QTimer.singleShot(0, popup.toggle_visibility)
+
     def on_voice_toggled(enabled):
         if enabled:
-            system_monitor.start()
+            voice_engine.start_wake_word_listener(on_activate)
         else:
-            system_monitor.stop()
+            voice_engine.stop_wake_word_listener()
 
     def on_autostart_toggled(enabled):
         try:
@@ -101,9 +104,6 @@ def main():
 
     try:
         from pynput import keyboard
-
-        def on_activate():
-            QTimer.singleShot(0, popup.toggle_visibility)
 
         hotkey = keyboard.HotKey(
             keyboard.HotKey.parse(config.HOTKEY),
@@ -125,8 +125,8 @@ def main():
 
     system_monitor.start()
     
-    # We must define on_activate earlier or just use it here since it's in scope from above
-    voice_engine.start_wake_word_listener(on_activate)
+    if tray.voice_enabled:
+        voice_engine.start_wake_word_listener(on_activate)
 
     tray.show()
     tray.show_message(config.APP_NAME, f"Running. Press {config.HOTKEY} to toggle.")

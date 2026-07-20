@@ -46,8 +46,8 @@ class SystemMonitor(QObject):
 
     def get_cpu(self) -> dict:
         return {
-            "percent": psutil.cpu_percent(interval=0.1),
-            "per_core": psutil.cpu_percent(interval=0.1, percpu=True),
+            "percent": psutil.cpu_percent(interval=None),
+            "per_core": psutil.cpu_percent(interval=None, percpu=True),
             "count": psutil.cpu_count(),
         }
 
